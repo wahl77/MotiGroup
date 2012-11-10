@@ -1,0 +1,38 @@
+1 server
+Admin (which can add companies)
+
+
+
+
+Clients
+Admin(s)
+  
+Classic users  (group)
+Enter: a percentage, a user, a comment
+
+Read: comments from others
+
+User
+UUN
+Password
+Last Name 
+First Name
+Added on(Member Since)
+Level/Tree
+Last logged in
+
+Grades
+From UUN
+To UUN
+Timestamp
+Grade (%)
+Comments
+
+
+Company
+ID
+Name
+
+User.Company
+UUN
+Company
