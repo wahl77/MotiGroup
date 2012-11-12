@@ -6,31 +6,31 @@ HOST = "127.0.0.1"
 PORT = 5432
 
 class client_receiving_thread(threading.Thread):
-	def __init__(self, c):
+	def __init__(self, socket):
 		threading.Thread.__init__(self)
-		self.conn = c
+		self.socket = socket
 		self.stopIt = False
 
 	def message_recv(self):
-		data = self.conn.recv(SIZE)
-		self.conn.send("OK")
-		return self.conn.recv(int(data)) # Return the string
+		data = self.socket.recv(SIZE)
+		self.socket.send("OK")
+		return self.socket.recv(int(data)) # Return the string
 	
 	def run(self):
 		while not self.stopIt:
 			msg = self.message_recv()
 			print 'Received -->', msg
 
-def message_send(conn,msg):   # For sending a message on a specific connection
+def message_send(socket, msg):   # For sending a message on a specific connection
 	if len(msg) <= 999 and len(msg) > 0:
-		conn.send(str(len(msg)))
-		if conn.recv(2) == 'OK': # Server is ready to receive
-			conn.send(msg)
+		socket.send(str(len(msg)))
+		if socket.recv(2) == 'OK': # Server is ready to receive
+			socket.send(msg)
 	else:
-		conn.send(str(999))
-		if conn.recv(2) == 'OK':
-			conn.send(msg[:999])
-			message_send(conn.msg[1000:])				#call recursively with the following bytes
+		socket.send(str(999))
+		if socket.recv(2) == 'OK':
+			socket.send(msg[:999])
+			message_send(socket, msg[1000:])				#call recursively with the following bytes
 
 
 
