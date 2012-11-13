@@ -10,4 +10,3 @@ CREATE TABLE IF NOT EXISTS `Users` (`username` varchar(255) NOT NULL,`lastName` 
 
 INSERT INTO `MotiGroup`.`Users` (`username`, `lastName`, `firstName`, `memberSince`, `level_tree`, `password`, `isAdmin`) VALUES ('franky', 'W', 'Franky', CURRENT_TIMESTAMP, '0', 'franky', '1'), ('pierre', 'W', 'Pierre', CURRENT_TIMESTAMP, '0', 'pierre', '0');
 
-

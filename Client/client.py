@@ -5,21 +5,12 @@ SIZE = 4
 HOST = "127.0.0.1"
 PORT = 5432
 
-class client_receiving_thread(threading.Thread):
-	def __init__(self, socket):
-		threading.Thread.__init__(self)
-		self.socket = socket
-		self.stopIt = False
-
-	def message_recv(self):
-		data = self.socket.recv(SIZE)
-		self.socket.send("OK")
-		return self.socket.recv(int(data)) # Return the string
-	
-	def run(self):
-		while not self.stopIt:
-			msg = self.message_recv()
-			print 'Received -->', msg
+def message_recv(socket):
+	data = socket.recv(SIZE)
+	socket.send("OK")
+	msg =  socket.recv(int(data)) # Return the string
+	print 'Received --> ', msg
+	return msg
 
 def message_send(socket, msg):   # For sending a message on a specific connection
 	if len(msg) <= 999 and len(msg) > 0:
@@ -34,25 +25,21 @@ def message_send(socket, msg):   # For sending a message on a specific connectio
 
 
 
-# Always create two sockets, one for sending the other one for receiving data
-soc1 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-soc1.connect((HOST,PORT))
-soc1.send('Will Send') # indicating this socket is for sending data
+soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+soc.connect((HOST,PORT))
 
-soc2 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-soc2.connect((HOST,PORT))
-soc2.send('Will Recv') # indicating this socket is for receiving data
+while 1:
+	msg = message_recv(soc)
+	window = message_recv(soc)
+	if msg == 'EOF':
+		print "Connection Ended"
+		break;
+	else:
+		message_send(soc, raw_input())
+		message_send(soc, window)
+	
 
-thr = client_receiving_thread(soc2)
-thr.start()
-try:
-	while True:
-		message_send(soc1, raw_input())
-except:
-	print 'closing'
 
-thr.stopIt = True
-thr.conn.close() # Close the thread
 
-soc1.close() # Close sending socket
-soc2.close() # Close receiving socket
+print 'Socket Closing'
+soc.close()
