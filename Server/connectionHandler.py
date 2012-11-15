@@ -7,7 +7,7 @@ SIZE = 4
 HOST = "127.0.0.1"
 PORT = 5432
 
-window = {'login': '0', 'password': '1', 'end': '2'}
+window = {'login': '0', 'password': '1', 'end': '2', 'welcome' : '3'}
 
 db = mdb.connect(host='localhost', user='root', passwd='', db='MotiGroup')
 
@@ -15,6 +15,7 @@ class ConnectionHandler(threading.Thread):
 	def __init__(self, client_socket):
 		self.socket = client_socket
 		threading.Thread.__init__(self)
+		self.username = ""
 
 	def message_recv(self, socket):
 		data = self.socket.recv(SIZE)
@@ -38,13 +39,27 @@ class ConnectionHandler(threading.Thread):
 	def handle_message(self, client_msg, client_window):
 		with db: 
 			cur = db.cursor(mdb.cursors.DictCursor)
+
+			# Login window
 			if client_window == window['login']:
 				cur.execute("SELECT * FROM Users WHERE username  = %s", client_msg)
 				row = cur.fetchall()
 				if len(row) == 0:
 					return ("Sorry, username not found\nPlease enter your username", window['login'])
 				else:
+					self.username = row[0]['username']
 					msg = "Please enter your password " + row[0]['firstName']
+					return (msg, window['password'])
+
+			# Password window
+			if client_window == window['password']:
+				cur.execute("SELECT * FROM Users WHERE username  = %s", self.username)
+				row = cur.fetchall()
+				if row[0]['password'] == client_msg:
+					msg = "Welcome to MotiGroup " + row[0]['firstName']
+					return (msg, window['welcome'])
+				else:
+					msg = "Sorry, password incorrect, please try again"
 					return (msg, window['password'])
 			else:
 						print "dude"
