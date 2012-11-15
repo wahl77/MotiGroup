@@ -1,5 +1,4 @@
 import socket
-import threading
 
 SIZE = 4
 HOST = "127.0.0.1"

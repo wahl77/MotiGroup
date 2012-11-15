@@ -14,6 +14,7 @@ db = mdb.connect(host='localhost', user='root', passwd='', db='MotiGroup')
 class ConnectionHandler(threading.Thread):
 	def __init__(self, client_socket):
 		self.socket = client_socket
+		threading.Thread.__init__(self)
 
 	def message_recv(self, socket):
 		data = self.socket.recv(SIZE)
@@ -65,6 +66,6 @@ class ConnectionHandler(threading.Thread):
 				(msg1, msg2) = self.handle_message(client_msg, client_window)
 				self.message_send(socket, msg1)
 				self.message_send(socket, msg2)
-				print "Your replied"
+				print "Your replied " + msg1 + " to: " + self.socket.getsockname()[0] + str(self.socket.getsockname()[1]) + self.socket.getpeername()[0]  + str(self.socket.getpeername()[1])
 		print "Socket closing" 
 		self.socket.close()
