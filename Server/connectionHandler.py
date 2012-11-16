@@ -44,7 +44,7 @@ class ConnectionHandler(threading.Thread):
 			client_msg = self.message_recv(self.socket)
 			client_window = self.message_recv(self.socket)
 			if client_msg == 'q':
-				self.message_send(socket, 'EOF')
+				self.message_send(socket, 'Connection Terminating')
 				self.message_send(socket, 'EOF')
 				break
 			else:
@@ -58,9 +58,14 @@ class ConnectionHandler(threading.Thread):
 	# Return a string with the list of options for the welcome page
 	def welcome_options(self):
 		options = {0: 'What would  you like to do?', 1: 'View my profile', 2:'View somebody\'s profile', 3:'Reward someone)',}
-		msg = "\n" + options[0]
+		options_admin = {0: 'Add a user', 1: 'Remove a user',}
+		is_admin = True
+		msg = options[0]
 		for i in range(1, len(options)):
 			msg += "\n\t" + str(i) + ") " + options[i]
+		if is_admin:
+			for i in range(0, len(options_admin)):
+				msg += "\n\t" + str(i+len(options)) + ") " + options_admin[i]
 		return msg
 	
 	def handle_message(self, client_msg, client_window):
@@ -84,7 +89,7 @@ class ConnectionHandler(threading.Thread):
 				row = cur.fetchall()
 				i = 0
 				if row[0]['password'] == client_msg:
-					return (msg, self.welcome_options()))
+					return (self.welcome_options(), window['password'])
 				else:
 					msg = "Sorry, password incorrect, please try again"
 					return (msg, window['password'])

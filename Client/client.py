@@ -8,7 +8,6 @@ def message_recv(socket):
 	data = socket.recv(SIZE)
 	socket.send("OK")
 	msg =  socket.recv(int(data)) # Return the string
-	print 'Received --> ', msg
 	return msg
 
 def message_send(socket, msg):   # For sending a message on a specific connection
@@ -28,9 +27,9 @@ soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 soc.connect((HOST,PORT))
 
 while 1:
-	msg = message_recv(soc)
+	print 'Received --> \n' + message_recv(soc)
 	window = message_recv(soc)
-	if msg == 'EOF':
+	if window == 'EOF':
 		print "Connection Ended"
 		break;
 	else:
