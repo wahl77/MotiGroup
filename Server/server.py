@@ -9,7 +9,7 @@ import thread
 SIZE = 4
 HOST = "127.0.0.1"
 PORT = 5432
-MAX_NUMBER_OF_CONNECTIONS = 5
+MAX_NUMBER_OF_CONNECTIONS = 1
 
 
 soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)

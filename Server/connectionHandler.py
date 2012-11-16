@@ -35,6 +35,33 @@ class ConnectionHandler(threading.Thread):
 				self.socket.send(msg[:999])
 				self.message_send(self.socket, msg[1000:])
 	
+	def run(self):
+		msg0 = "Welcome to MotiGroup\n\tPlease enter your username"
+		msg2 = window['login']
+		self.message_send(self.socket, msg0)
+		self.message_send(self.socket, msg2)
+		while 1:
+			client_msg = self.message_recv(self.socket)
+			client_window = self.message_recv(self.socket)
+			if client_msg == 'q':
+				self.message_send(socket, 'EOF')
+				self.message_send(socket, 'EOF')
+				break
+			else:
+				(msg1, msg2) = self.handle_message(client_msg, client_window)
+				self.message_send(socket, msg1)
+				self.message_send(socket, msg2)
+				print "Your replied " + msg1 + " to: " + self.socket.getsockname()[0] + str(self.socket.getsockname()[1]) + self.socket.getpeername()[0]  + str(self.socket.getpeername()[1])
+		print "Socket closing" 
+		self.socket.close()
+	
+	# Return a string with the list of options for the welcome page
+	def welcome_options(self):
+		options = {0: 'What would  you like to do?', 1: 'View my profile', 2:'View somebody\'s profile', 3:'Reward someone)',}
+		msg = "\n" + options[0]
+		for i in range(1, len(options)):
+			msg += "\n\t" + str(i) + ") " + options[i]
+		return msg
 	
 	def handle_message(self, client_msg, client_window):
 		with db: 
@@ -55,9 +82,9 @@ class ConnectionHandler(threading.Thread):
 			if client_window == window['password']:
 				cur.execute("SELECT * FROM Users WHERE username  = %s", self.username)
 				row = cur.fetchall()
+				i = 0
 				if row[0]['password'] == client_msg:
-					msg = "Welcome to MotiGroup " + row[0]['firstName']
-					return (msg, window['welcome'])
+					return (msg, self.welcome_options()))
 				else:
 					msg = "Sorry, password incorrect, please try again"
 					return (msg, window['password'])
@@ -65,22 +92,3 @@ class ConnectionHandler(threading.Thread):
 						print "dude"
 			return ("test", "abc")
 
-	def run(self):
-		msg0 = "Welcome to MotiGroup\n\tPlease enter your username"
-		msg2 = window['login']
-		self.message_send(self.socket, msg0)
-		self.message_send(self.socket, msg2)
-		while 1:
-			client_msg = self.message_recv(self.socket)
-			client_window = self.message_recv(self.socket)
-			if client_msg == 'q':
-				self.message_send(socket, 'EOF')
-				self.message_send(socket, 'EOF')
-				break
-			else:
-				(msg1, msg2) = self.handle_message(client_msg, client_window)
-				self.message_send(socket, msg1)
-				self.message_send(socket, msg2)
-				print "Your replied " + msg1 + " to: " + self.socket.getsockname()[0] + str(self.socket.getsockname()[1]) + self.socket.getpeername()[0]  + str(self.socket.getpeername()[1])
-		print "Socket closing" 
-		self.socket.close()
