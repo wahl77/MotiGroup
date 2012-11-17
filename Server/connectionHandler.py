@@ -4,8 +4,6 @@ import MySQLdb as mdb
 import sys
 
 SIZE = 4
-HOST = "127.0.0.1"
-PORT = 5432
 
 window = {'login': '0', 'password': '1', 'end': '2', 'welcome' : '3', 'companies': '4'}
 
@@ -16,6 +14,7 @@ class ConnectionHandler(threading.Thread):
 		self.socket = client_socket
 		threading.Thread.__init__(self)
 		self.username = ""
+		self.current_window = window['login']
 		with db:
 			self.cursor = db.cursor(mdb.cursors.DictCursor)
 
@@ -38,22 +37,17 @@ class ConnectionHandler(threading.Thread):
 				self.message_send(self.socket, msg[1000:])
 	
 	def run(self):
-		msg0 = "Welcome to MotiGroup\n\tPlease enter your username"
-		msg2 = window['login']
-		self.message_send(self.socket, msg0)
-		self.message_send(self.socket, msg2)
+		msg = "Welcome to MotiGroup\nPlease enter your username: "
+		self.message_send(self.socket, msg)
 		while 1:
 			client_msg = self.message_recv(self.socket)
-			client_window = self.message_recv(self.socket)
 			if client_msg == 'q':
-				self.message_send(socket, 'Connection Terminating')
 				self.message_send(socket, 'EOF')
 				break
 			else:
-				(msg1, msg2) = self.handle_message(client_msg, client_window)
-				self.message_send(socket, msg1)
-				self.message_send(socket, msg2)
-				print "Your replied " + msg1 + " to: " + self.socket.getsockname()[0] + str(self.socket.getsockname()[1]) + self.socket.getpeername()[0]  + str(self.socket.getpeername()[1])
+				msg = self.handle_message(client_msg)
+				self.message_send(socket, msg)
+				print "\nYour replied to: " + self.socket.getsockname()[0] + str(self.socket.getsockname()[1]) + self.socket.getpeername()[0]  + str(self.socket.getpeername()[1]) + "\n " + msg
 		print "Socket closing" 
 		self.socket.close()
 	
@@ -79,35 +73,39 @@ class ConnectionHandler(threading.Thread):
 			msg += "\t" + rows[i]['company_name'] + "\n"
 		return msg
 
-
-
-	def handle_message(self, client_msg, client_window):
+	def handle_message(self, client_msg):
 
 		# Login window
-		if client_window == window['login']:
+		if self.current_window == window['login']:
 			self.cursor.execute("SELECT * FROM Users WHERE username = %s", client_msg)
 			row = self.cursor.fetchall()
 			if len(row) == 0:
-				return ("Sorry, username not found\nPlease enter your username", window['login'])
+				return "Sorry, username not found\nPlease enter your username"
 			else:
 				self.username = row[0]['username']
+				self.current_window = window['password']
 				msg = "Please enter your password " + row[0]['firstName']
-				return (msg, window['password'])
+				return msg
 
 		# Password window
-		if client_window == window['password']:
+		if self.current_window == window['password']:
 			self.cursor.execute("SELECT * FROM Users WHERE username  = %s", self.username)
 			row = self.cursor.fetchall()
 			if row[0]['password'] == client_msg:
-				return (self.welcome_options(), window['companies'])
+				self.current_window = window['welcome']
+				return self.welcome_options()
 			else:
 				msg = "Sorry, password incorrect, please try again"
-				return (msg, window['password'])
+				return msg
 
 		# Companies page
-		if client_window == window['companies']:
-			return (self.my_profiles(), window['companies'])
+		if self.current_window == window['welcome']:
+			if client_msg == '1':
+				return self.my_profiles()
+			else: 
+				return "Not a valid option " + client_msg + "\n" + self.welcome_options()
 
 		else:
-					print "dude"
-		return ("test", "abc")
+			print "dude, this is window " + str(self.current_window) + " and client message was " + client_msg
+			return "dude, this is window " + str(self.current_window) + " and client message was " + client_msg
+			
