@@ -7,7 +7,7 @@ SIZE = 4
 HOST = "127.0.0.1"
 PORT = 5432
 
-window = {'login': '0', 'password': '1', 'end': '2', 'welcome' : '3'}
+window = {'login': '0', 'password': '1', 'end': '2', 'welcome' : '3', 'companies': '4'}
 
 db = mdb.connect(host='localhost', user='root', passwd='', db='MotiGroup')
 
@@ -16,6 +16,8 @@ class ConnectionHandler(threading.Thread):
 		self.socket = client_socket
 		threading.Thread.__init__(self)
 		self.username = ""
+		with db:
+			self.cursor = db.cursor(mdb.cursors.DictCursor)
 
 	def message_recv(self, socket):
 		data = self.socket.recv(SIZE)
@@ -68,33 +70,44 @@ class ConnectionHandler(threading.Thread):
 				msg += "\n\t" + str(i+len(options)) + ") " + options_admin[i]
 		return msg
 	
+	# Profile Page, returns a list of companies you belong to
+	def my_profiles(self): 
+		msg = "You belong to the following companies: \n"
+		self.cursor.execute("SELECT Users.username, Companies.company_name FROM Users, UserCompany, Companies WHERE Users.username = %s  AND Users.username = UserCompany.username AND Companies.company_id = UserCompany.company_id", self.username) 
+		rows = self.cursor.fetchall()
+		for i in range(0, len(rows)):
+			msg += "\t" + rows[i]['company_name'] + "\n"
+		return msg
+
+
+
 	def handle_message(self, client_msg, client_window):
-		with db: 
-			cur = db.cursor(mdb.cursors.DictCursor)
 
-			# Login window
-			if client_window == window['login']:
-				cur.execute("SELECT * FROM Users WHERE username  = %s", client_msg)
-				row = cur.fetchall()
-				if len(row) == 0:
-					return ("Sorry, username not found\nPlease enter your username", window['login'])
-				else:
-					self.username = row[0]['username']
-					msg = "Please enter your password " + row[0]['firstName']
-					return (msg, window['password'])
-
-			# Password window
-			if client_window == window['password']:
-				cur.execute("SELECT * FROM Users WHERE username  = %s", self.username)
-				row = cur.fetchall()
-				i = 0
-				if row[0]['password'] == client_msg:
-					return (self.welcome_options(), window['password'])
-				else:
-					msg = "Sorry, password incorrect, please try again"
-					return (msg, window['password'])
+		# Login window
+		if client_window == window['login']:
+			self.cursor.execute("SELECT * FROM Users WHERE username = %s", client_msg)
+			row = self.cursor.fetchall()
+			if len(row) == 0:
+				return ("Sorry, username not found\nPlease enter your username", window['login'])
 			else:
-						print "dude"
-			return ("test", "abc")
+				self.username = row[0]['username']
+				msg = "Please enter your password " + row[0]['firstName']
+				return (msg, window['password'])
 
-# SELECT Users.username, Companies.company_name FROM Users, UserCompany, Companies  WHERE Users.username = UserCompany.username AND Companies.company_id = UserCompany.company_id
+		# Password window
+		if client_window == window['password']:
+			self.cursor.execute("SELECT * FROM Users WHERE username  = %s", self.username)
+			row = self.cursor.fetchall()
+			if row[0]['password'] == client_msg:
+				return (self.welcome_options(), window['companies'])
+			else:
+				msg = "Sorry, password incorrect, please try again"
+				return (msg, window['password'])
+
+		# Companies page
+		if client_window == window['companies']:
+			return (self.my_profiles(), window['companies'])
+
+		else:
+					print "dude"
+		return ("test", "abc")
