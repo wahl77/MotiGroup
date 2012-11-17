@@ -3,10 +3,53 @@ CREATE DATABASE MotiGroup;
 
 connect MotiGroup;
 
-CREATE TABLE IF NOT EXISTS `Company` (`id` int(11) NOT NULL AUTO_INCREMENT,`Name` varchar(255) NOT NULL, PRIMARY KEY (`id`));
 
-CREATE TABLE IF NOT EXISTS `Users` (`username` varchar(255) NOT NULL,`lastName` varchar(255) NOT NULL,`firstName` varchar(255) NOT NULL, `memberSince` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,`level_tree` int(11) NOT NULL,`password` varchar(255) NOT NULL,`isAdmin` tinyint(1) NOT NULL DEFAULT '0',PRIMARY KEY (`username`));
+CREATE TABLE IF NOT EXISTS `Companies` (
+  `company_id` int(11) NOT NULL AUTO_INCREMENT,
+  `company_name` varchar(255) NOT NULL,
+  PRIMARY KEY (`company_id`)
+) ENGINE=InnoDB  DEFAULT CHARSET=latin1 AUTO_INCREMENT=3 ;
+
+INSERT INTO `Companies` (`company_id`, `company_name`) VALUES
+(1, 'Apple'),
+(2, 'Google'),
+(3, 'Microsoft');
+
+CREATE TABLE IF NOT EXISTS `Grades` (
+  `From` varchar(2552) NOT NULL,
+  `To` varchar(255) NOT NULL,
+  `Timestamp` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `Grade` int(11) NOT NULL,
+  `Comment` varchar(255) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
 
-INSERT INTO `MotiGroup`.`Users` (`username`, `lastName`, `firstName`, `memberSince`, `level_tree`, `password`, `isAdmin`) VALUES ('franky', 'W', 'Franky', CURRENT_TIMESTAMP, '0', 'franky', '1'), ('pierre', 'W', 'Pierre', CURRENT_TIMESTAMP, '0', 'pierre', '0');
+CREATE TABLE IF NOT EXISTS `UserCompany` (
+  `username` varchar(255) NOT NULL,
+  `company_id` int(11) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+
+INSERT INTO `UserCompany` (`username`, `company_id`) VALUES
+('franky', 1),
+('pierre', 2),
+('franky', 3);
+
+
+CREATE TABLE IF NOT EXISTS `Users` (
+  `username` varchar(255) NOT NULL,
+  `lastName` varchar(255) NOT NULL,
+  `firstName` varchar(255) NOT NULL,
+  `memberSince` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `level_tree` int(11) NOT NULL,
+  `password` varchar(255) NOT NULL,
+  `isAdmin` tinyint(1) NOT NULL DEFAULT '0',
+  PRIMARY KEY (`username`)
+) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+
+
+INSERT INTO `Users` (`username`, `lastName`, `firstName`, `memberSince`, `level_tree`, `password`, `isAdmin`) VALUES
+('franky', 'W', 'Franky', '2012-11-14 07:31:40', 0, 'franky', 1),
+('pierre', 'W', 'Pierre', '2012-11-14 07:31:40', 0, 'pierre', 0);
+
+
 
