@@ -97,3 +97,4 @@ class ConnectionHandler(threading.Thread):
 						print "dude"
 			return ("test", "abc")
 
+# SELECT Users.username, Companies.company_name FROM Users, UserCompany, Companies  WHERE Users.username = UserCompany.username AND Companies.company_id = UserCompany.company_id
