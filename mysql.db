@@ -26,11 +26,11 @@ CREATE TABLE IF NOT EXISTS `Grades` (
 
 CREATE TABLE IF NOT EXISTS `UserCompany` (
   `username` varchar(255) NOT NULL,
-  `company_id` int(11) NOT NULL
-  `isAdmin` tinyint(1) NOT NULL DEFAULT '0',
+  `company_id` int(11) NOT NULL,
+  `isAdmin` tinyint(1) NOT NULL DEFAULT '0'
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
-INSERT INTO `UserCompany` (`username`, `company_id`) VALUES
+INSERT INTO `UserCompany` (`username`, `company_id`, `isAdmin`) VALUES
 ('franky', 1, 1),
 ('pierre', 2, 1),
 ('franky', 3, 1),
@@ -54,7 +54,7 @@ CREATE TABLE IF NOT EXISTS `Users` (
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
 
-INSERT INTO `Users` (`username`, `lastName`, `firstName`, `memberSince`, `level_tree`, `password`, `isAdmin`) VALUES
+INSERT INTO `Users` (`username`, `lastName`, `firstName`, `memberSince`, `level_tree`, `password`) VALUES
 ('franky', 'W', 'Franky', '2012-11-14 07:31:40', 0, 'franky'),
 ('franky1', 'Wahl', 'Franky', '2012-11-14 07:31:40', 0, 'franky'),
 ('franky2', 'W', 'Franklin', '2012-11-14 07:31:40', 0, 'franky'),
