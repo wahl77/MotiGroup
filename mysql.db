@@ -27,13 +27,21 @@ CREATE TABLE IF NOT EXISTS `Grades` (
 CREATE TABLE IF NOT EXISTS `UserCompany` (
   `username` varchar(255) NOT NULL,
   `company_id` int(11) NOT NULL
+  `isAdmin` tinyint(1) NOT NULL DEFAULT '0',
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
 INSERT INTO `UserCompany` (`username`, `company_id`) VALUES
-('franky', 1),
-('pierre', 2),
-('franky', 3);
-
+('franky', 1, 1),
+('pierre', 2, 1),
+('franky', 3, 1),
+('franky1', 2, 0),
+('pierre1', 2, 0),
+('franky2', 3, 0), 
+('franky3', 2, 0),
+('franky4', 2, 0),
+('pierre2', 1, 0),
+('franky5', 1, 0), 
+('franky6', 1, 0);
 
 CREATE TABLE IF NOT EXISTS `Users` (
   `username` varchar(255) NOT NULL,
@@ -42,14 +50,21 @@ CREATE TABLE IF NOT EXISTS `Users` (
   `memberSince` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `level_tree` int(11) NOT NULL,
   `password` varchar(255) NOT NULL,
-  `isAdmin` tinyint(1) NOT NULL DEFAULT '0',
   PRIMARY KEY (`username`)
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
 
 INSERT INTO `Users` (`username`, `lastName`, `firstName`, `memberSince`, `level_tree`, `password`, `isAdmin`) VALUES
-('franky', 'W', 'Franky', '2012-11-14 07:31:40', 0, 'franky', 1),
-('pierre', 'W', 'Pierre', '2012-11-14 07:31:40', 0, 'pierre', 0);
+('franky', 'W', 'Franky', '2012-11-14 07:31:40', 0, 'franky'),
+('franky1', 'Wahl', 'Franky', '2012-11-14 07:31:40', 0, 'franky'),
+('franky2', 'W', 'Franklin', '2012-11-14 07:31:40', 0, 'franky'),
+('franky3', 'W.', 'Franky', '2012-11-14 07:31:40', 0, 'franky'),
+('franky4', 'W.', 'Franklin', '2012-11-14 07:31:40', 0, 'franky'),
+('franky5', 'W', 'Frankenstein', '2012-11-14 07:31:40', 0, 'franky'),
+('franky6', 'Wahly', 'Franky', '2012-11-14 07:31:40', 0, 'franky'),
+('pierre', 'W', 'Pierre', '2012-11-14 07:31:40', 0, 'pierre'),
+('pierre1', 'W', 'Pierre-Edouard', '2012-11-14 07:31:40', 0, 'pierre'),
+('pierre2', 'Wahl', 'Pierre', '2012-11-14 07:31:40', 0, 'pierre');
 
 
 
