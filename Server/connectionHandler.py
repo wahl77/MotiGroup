@@ -6,7 +6,7 @@ import math
 
 SIZE = 4
 
-window = {'connection_established': '-1', 'login_username': '0', 'login_password': '1', 'welcome_menu': '2', 'find_user' : '3', 'my_companies': '4', 'list_user':'5'}
+window = {'connection_established': '-1', 'login_username': '0', 'login_password': '1', 'welcome_menu': '2', 'find_user' : '3', 'my_companies': '4', 'list_user':'5', 'user_grading' : '6'}
 
 db = mdb.connect(host='localhost', user='root', passwd='', db='MotiGroup')
 
@@ -16,12 +16,13 @@ class ConnectionHandler(threading.Thread):
 		threading.Thread.__init__(self)
 		self.username = ""
 		self.current_window = window['connection_established']
+		self.user_browsing = ""
 		with db:
 			self.cursor = db.cursor(mdb.cursors.DictCursor)
 
-	def message_recv(self, socket):
+	def message_recv(self):
 		data = self.socket.recv(SIZE)
-		socket.send('OK') # Send a ready to receive signal
+		self.socket.send('OK') # Send a ready to receive signal
 		msg = self.socket.recv(int(data))
 		print 'Received --> ', msg
 		return msg
@@ -45,7 +46,7 @@ class ConnectionHandler(threading.Thread):
 				break
 			else:
 				self.handle_message(client_msg)
-				client_msg = self.message_recv(self.socket)
+				client_msg = self.message_recv()
 		print "Socket closing" 
 		self.socket.close()
 	
@@ -88,6 +89,16 @@ class ConnectionHandler(threading.Thread):
 		else:
 			return True
 
+	# Get a confirmation of a message
+	def get_confirmation(self, string):
+		yes = set(['Yes', 'yes', 'y', 'YES', 'Y'])
+		self.message_send(string)
+		confirmation = self.message_recv()
+		if confirmation in yes:
+			return True
+		else:
+			return False
+
 	# Find a user related to us
 	def get_user(self, username):
 		query = 'SELECT * FROM Users WHERE Users.username IN (SELECT Users.username FROM Users, UserCompany WHERE UserCompany.company_id IN (SELECT Companies.company_id FROM Users, UserCompany, Companies WHERE Users.username = \'' + self.username + '\' AND Users.username = UserCompany.username AND Companies.company_id = UserCompany.company_id) AND Users.username = UserCompany.username) and Users.username = \'' +  username + '\''
@@ -96,8 +107,13 @@ class ConnectionHandler(threading.Thread):
 		if len(row) != 1:
 			return "Sorry, no match found"
 		else:
-			msg = "You have selected \n" 
-			msg += row[0]['username'] + ": " + row[0]['firstName'] + " " + row[0]['lastName'] + "\n"
+			#msg = "You have selected \n" 
+			#msg += row[0]['username'] + ": " + row[0]['firstName'] + " " + row[0]['lastName'] + "\n"
+			msg = "Processing"
+			choice = "Your choice is to grade " + row[0]['username'] + ": " + row[0]['firstName'] + " " + row[0]['lastName'] + "? [y/n]\n"
+			if self.get_confirmation(choice):
+				self.user_browsing = row[0]['username']
+				msg += self.grade_user()
 			return msg
 
 
@@ -142,8 +158,10 @@ class ConnectionHandler(threading.Thread):
 			msg = "Sorry, username not found\nPlease enter your username"
 		else:                    # Username is valid
 			self.username = username
-			msg = "Please enter your password "
-			self.current_window = window['login_password']
+			#msg = "Please enter your password "
+			#self.current_window = window['login_password']
+			self.current_window = window['welcome_menu'] # #DEBUG#  This is for bypassing password
+			msg = self.welcome_menu()
 		return msg
 
 	def validate_login_password(self, password):
@@ -155,6 +173,38 @@ class ConnectionHandler(threading.Thread):
 		else:
 			msg = "Sorry, password incorrect, please try again"
 		return msg
+
+	def request_grade(self):
+		self.message_send("Please enter a valid grade:")
+		try: 
+			grade = int(self.message_recv())
+		except:
+			self.request_grade()
+			return
+
+		if grade > 100 or grade < 0:
+			self.request_grade()
+		else:
+			if self.get_confirmation("You have attributed " + str(grade) + " to " + self.user_browsing + " [yes/no] "):
+				query = ""
+
+			
+			
+
+	# Has to be filled
+	def can_grade(self):
+		if self.username != self.user_browsing:
+			return True
+		else:
+			return False
+
+	def grade_user(self):
+		if self.can_grade():
+			grade = self.request_grade()
+			return "You have Successfully graded" + self.user_browsing + "\n"
+		else:
+			return "Sorry, this grading is not possible, You should know why\n" 
+
 
 
 	def handle_message(self, client_msg):
@@ -175,14 +225,13 @@ class ConnectionHandler(threading.Thread):
 		# Welcome page
 		elif self.current_window == window['welcome_menu']:
 			if client_msg ==  '2':
-				user_list = self.get_user_list()
-				msg += user_list
+				msg += self.get_user_list()
 			elif client_msg == '4':
 				msg += self.my_companies()
 			else:
 				msg += self.get_user(client_msg)
 			msg += self.welcome_menu()
-
+			
 		else:
 			print "dude, this is window " + str(self.current_window) + " and client message was " + client_msg
 			
