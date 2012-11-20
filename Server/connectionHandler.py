@@ -2,6 +2,7 @@ import socket
 import threading
 import MySQLdb as mdb
 import sys
+import math
 
 SIZE = 4
 
@@ -78,17 +79,41 @@ class ConnectionHandler(threading.Thread):
 	# 		print "Sorry user ... does not work for your company"
 	# 	return "ABC"
 
+	# Returns True if user is in the whole database
+	def user_exist(self, username):
+		self.cursor.execute("SELECT * FROM Users WHERE username = %s", username)
+		row = self.cursor.fetchall()
+		if len(row) == 0:        # Username does not exist
+			return False
+		else:
+			return True
+
+	# Find a user related to us
+	def get_user(self, username):
+		query = 'SELECT * FROM Users WHERE Users.username IN (SELECT Users.username FROM Users, UserCompany WHERE UserCompany.company_id IN (SELECT Companies.company_id FROM Users, UserCompany, Companies WHERE Users.username = \'' + self.username + '\' AND Users.username = UserCompany.username AND Companies.company_id = UserCompany.company_id) AND Users.username = UserCompany.username) and Users.username = \'' +  username + '\''
+		self.cursor.execute(query)
+		row = self.cursor.fetchall()
+		if len(row) != 1:
+			return "Sorry, no match found"
+		else:
+			msg = "You have selected \n" 
+			msg += row[0]['username'] + ": " + row[0]['firstName'] + " " + row[0]['lastName'] + "\n"
+			return msg
+
+
 
 	# This returns a string that is a list of users which are reachable by a person
 	def get_user_list(self):
-		self.cursor.execute("SELECT Users.username, Users.firstName, Users.lastName FROM Users, UserCompany WHERE UserCompany.company_id IN (SELECT Companies.company_id FROM Users, UserCompany, Companies WHERE Users.username = %s AND Users.username = UserCompany.username AND Companies.company_id = UserCompany.company_id) AND Users.username = UserCompany.username", self.username)
+		query = 'SELECT Users.username, Users.firstName, Users.lastName FROM Users, UserCompany WHERE UserCompany.company_id IN (SELECT Companies.company_id FROM Users, UserCompany, Companies WHERE Users.username = \'' + self.username + '\'AND Users.username = UserCompany.username AND Companies.company_id = UserCompany.company_id) AND Users.username = UserCompany.username ORDER BY lastName'
+		self.cursor.execute(query)
 		row = self.cursor.fetchall()
-		msg = "Users are \n"
+		msg = "{0:25}{1:25}{2:25}\n".format('Username', 'Last Name', 'First Name')
+		msg += '-------------------------------------------------------------------------------------\n'
 		for i in range(0, len(row)):	
 			if row[i]['username'] != self.username:
-				msg += row[i]['username'] + row[i]['firstName'] + row[i]['lastName'] + "\n"
+				msg += '{0:25}{1:25}{2:25}\n'.format(row[i]['username'], row[i]['lastName'], row[i]['firstName'])
+		msg += '-------------------------------------------------------------------------------------\n'
 		return msg
-			
 
 	# This returns a string with all companies you belong to
 	def my_companies(self): 
@@ -107,21 +132,17 @@ class ConnectionHandler(threading.Thread):
 			msg += "\n\t" + str(i) + ") " + options[i]
 		return msg
 
-
 	def request_login_username(self):
 		msg = "Please enter your username"
 		self.current_window = window['login_username']
 		return msg
 
 	def validate_login_username(self, username):
-		self.cursor.execute("SELECT * FROM Users WHERE username = %s", username)
-		row = self.cursor.fetchall()
-		if len(row) == 0:        # Username is invalid
+		if not self.user_exist(username):        # Username is invalid
 			msg = "Sorry, username not found\nPlease enter your username"
 		else:                    # Username is valid
-			self.username = row[0]['username']
-			self.current_window = window['login_password']
-			msg = "Please enter your password " + row[0]['firstName']
+			self.username = username
+			msg = "Please enter your password "
 			self.current_window = window['login_password']
 		return msg
 
@@ -137,26 +158,29 @@ class ConnectionHandler(threading.Thread):
 
 
 	def handle_message(self, client_msg):
+		msg = ""
 
 		# Connection established, send request for uun
 		if self.current_window == window['connection_established']:
-			msg = self.request_login_username()
+			msg += self.request_login_username()
 
 		# Login window
 		elif self.current_window == window['login_username']:
-			msg = self.validate_login_username(client_msg)
+			msg += self.validate_login_username(client_msg)
 
 		# Validate password
 		elif self.current_window == window['login_password']:
-			msg = self.validate_login_password(client_msg)
+			msg += self.validate_login_password(client_msg)
 
 		# Welcome page
 		elif self.current_window == window['welcome_menu']:
 			if client_msg ==  '2':
 				user_list = self.get_user_list()
-				msg = user_list + "OK"
+				msg += user_list
 			elif client_msg == '4':
-				msg = self.my_companies()
+				msg += self.my_companies()
+			else:
+				msg += self.get_user(client_msg)
 			msg += self.welcome_menu()
 
 		else:
