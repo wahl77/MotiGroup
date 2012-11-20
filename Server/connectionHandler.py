@@ -186,9 +186,15 @@ class ConnectionHandler(threading.Thread):
 			self.request_grade()
 		else:
 			if self.get_confirmation("You have attributed " + str(grade) + " to " + self.user_browsing + " [yes/no] "):
-				query = ""
+				try: 
+					query = "INSERT INTO Grades (`From`, `To`, `Timestamp`, `Grade`, `Comment`) VALUES ('" + self.username + "', '" + self.user_browsing + "', CURRENT_TIMESTAMP, '"+ str(grade) +"', '')"
+					self.cursor.execute(query)
+					db.commit()
+				except: 
+					print "Error processing query"
+					db.rollback()
 
-			
+					
 			
 
 	# Has to be filled
