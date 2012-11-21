@@ -78,7 +78,7 @@ class ConnectionHandler(threading.Thread):
 #			self.check_password("Please enter your password\n")
 			self.welcome_menu("Welcom\n")
 		else:
-		  login("Sorry, username not found\nPlease enter your username")
+		  self.login("Sorry, username not found\nPlease enter your username")
 
 		
 	# Validate for password
@@ -99,6 +99,7 @@ class ConnectionHandler(threading.Thread):
 		msg += options[0]
 		for i in range(1, len(options)):
 			msg += "\n\t" + str(i) + ") " + options[i]
+		response = ""
 		self.message_send(msg)
 		response = self.message_recv()
 		if response == '2':
@@ -113,6 +114,7 @@ class ConnectionHandler(threading.Thread):
 			return
 		else:
 			self.get_user(response)
+		
 			
 
 	# My companies, returns a list of companies you belong to
@@ -149,19 +151,11 @@ class ConnectionHandler(threading.Thread):
 			self.user_browsing = row[0]['username']
 			choice = "Your choice is to grade " + row[0]['username'] + ": " + row[0]['firstName'] + " " + row[0]['lastName'] + "? [y/n]"
 			if self.get_confirmation(choice):
-				self.grade_user()
+				self.request_grade(self.get_prev_grades())
 			else:
 				self.welcome_menu("You abandoned inputing data\n")
 
-	def grade_user(self):
-		can_grade = self.can_grade()
-		if can_grade[0] == 0:
-			grade = self.request_grade(can_grade[1])
-			self.welcome_menu("You have successfully graded " + self.user_browsing + "\n")
-		else:
-			self.welcome_menu(can_grade[1])
-
-	# Previously graded
+	# Previously graded table, returns a string
 	def get_prev_grades(self):
 		query = "SELECT * FROM Grades WHERE Timestamp > DATE_SUB(NOW(), INTERVAL DAYOFMONTH(NOW()) DAY) AND Grades.From = \'" + self.username + "\'"
 		self.cursor.execute(query)
@@ -176,9 +170,8 @@ class ConnectionHandler(threading.Thread):
 		return msg
 
 
-
-	# Verify user is still eligible to grade someone
-	def can_grade(self):
+	# Make sure grade is valid and user is eligible to grade
+	def validate_grade(self, grade):
 		query = "SELECT SUM(Grade) FROM Grades WHERE Timestamp > DATE_SUB(NOW(), INTERVAL DAYOFMONTH(NOW()) DAY) AND Grades.From = \'" + self.username + "\'"
 		self.cursor.execute(query)
 		rows = self.cursor.fetchall()
@@ -187,15 +180,14 @@ class ConnectionHandler(threading.Thread):
 		if self.username == self.user_browsing:
 			msg = "You cannot give yourself a grade\n"
 			return (1,msg)
-		elif total >= 100 and total != None:
-			print type(total)
-			msg = "You have already reached your quota this month\n" + self.get_prev_grades()
+		elif total != None:
+			if (total+grade) > 100 or grade > 100:
+				msg = "You have exceeded your quota this month\n"
 			return (2,msg)
 		else: 
-			msg = self.get_prev_grades() + "You can now grade\n" 
+			msg = "You can now grade\n" 
 			return (0,msg)
 
-		
 	# Get a confirmation of a message
 	def get_confirmation(self, string):
 		yes = set(['Yes', 'yes', 'y', 'YES', 'Y'])
@@ -205,19 +197,24 @@ class ConnectionHandler(threading.Thread):
 			return True
 		else:
 			return False
+	
 
-
+	# Get a grade from user
 	def request_grade(self, msg):
-		msg += "Please enter a valid grade\n"
+		msg += "Please enter a valid grade or hit q for main menu\n"
 		self.message_send(msg)
-		try: 
-			grade = int(self.message_recv())
-		except:
-			self.request_grade(msg)
-			return
+		value = self.message_recv()
 
-		if grade > 100 or grade < 0:
-			self.request_grade(msg)
+		try: 
+			grade = int(value)
+		except:
+			self.welcome_menu("Welcome back to main menu")
+
+		grade_response = self.validate_grade(grade)
+		if not grade_response[0] == 0:
+			if grade_response[0] == 1:
+				self.welcome_menu("Welcome back\n")
+			self.request_grade(grade_response[1])
 		else:
 			if self.get_confirmation("You have attributed " + str(grade) + " to " + self.user_browsing + "?[yes/no]"):
 				try: 
@@ -227,4 +224,5 @@ class ConnectionHandler(threading.Thread):
 				except: 
 					print "Error processing query"
 					db.rollback()
+				self.welcome_menu("Welcome back to main menu")
 
