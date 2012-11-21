@@ -6,8 +6,6 @@ import math
 
 SIZE = 4
 
-window = {'connection_established': '-1', 'login_username': '0', 'login_password': '1', 'welcome_menu': '2', 'find_user' : '3', 'my_companies': '4', 'list_user':'5', 'user_grading' : '6'}
-
 db = mdb.connect(host='localhost', user='root', passwd='', db='MotiGroup')
 
 class ConnectionHandler(threading.Thread):
@@ -15,7 +13,6 @@ class ConnectionHandler(threading.Thread):
 		self.socket = client_socket
 		threading.Thread.__init__(self)
 		self.username = ""
-		self.current_window = window['connection_established']
 		self.user_browsing = ""
 		with db:
 			self.cursor = db.cursor(mdb.cursors.DictCursor)
@@ -39,36 +36,16 @@ class ConnectionHandler(threading.Thread):
 				self.message_send(msg[1000:])
 	
 	def run(self):
-		client_msg = ""
-		while 1:
-			if client_msg == 'q':
-				self.message_send('EOF')
-				break
-			else:
-				self.handle_message(client_msg)
-				client_msg = self.message_recv()
+		self.login("Welcome to MotiGroup\nPlease enter you login")
 		print "Socket closing" 
+		self.message_send('EOF')
 		self.socket.close()
 	
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
 
-
-	# Return a string with the list of options for the welcome page
-	# def welcome_options(self):
-	# 	options = {0: 'What would  you like to do?', 1: 'View my profile', 2:'View somebody\'s profile', 3:'Reward someone)',}
-	# 	options_admin = {0: 'Add a user', 1: 'Remove a user',}
-	# 	is_admin = True
-	# 	msg = options[0]
-	# 	for i in range(1, len(options)):
-	# 		msg += "\n\t" + str(i) + ") " + options[i]
-	# 	if is_admin:
-	# 		for i in range(0, len(options_admin)):
-	# 			msg += "\n\t" + str(i+len(options)) + ") " + options_admin[i]
-	# 	return msg
 	
-	# My companies, returns a list of companies you belong to
 
 	# def find_user(self, username):
 	# 	self.cursor.execute("SELECT * FROM Users")
@@ -80,6 +57,9 @@ class ConnectionHandler(threading.Thread):
 	# 		print "Sorry user ... does not work for your company"
 	# 	return "ABC"
 
+# ---------------------------
+
+		
 	# Returns True if user is in the whole database
 	def user_exist(self, username):
 		self.cursor.execute("SELECT * FROM Users WHERE username = %s", username)
@@ -88,34 +68,61 @@ class ConnectionHandler(threading.Thread):
 			return False
 		else:
 			return True
-
-	# Get a confirmation of a message
-	def get_confirmation(self, string):
-		yes = set(['Yes', 'yes', 'y', 'YES', 'Y'])
-		self.message_send(string)
-		confirmation = self.message_recv()
-		if confirmation in yes:
-			return True
+		
+		
+	# Get username at login
+	def login(self, msg):
+		self.message_send(msg)
+		self.username = self.message_recv()
+		if self.user_exist(self.username):        # Username is invalid
+#			self.check_password("Please enter your password\n")
+			self.welcome_menu("Welcom\n")
 		else:
-			return False
+		  login("Sorry, username not found\nPlease enter your username")
 
-	# Find a user related to us
-	def get_user(self, username):
-		query = 'SELECT * FROM Users WHERE Users.username IN (SELECT Users.username FROM Users, UserCompany WHERE UserCompany.company_id IN (SELECT Companies.company_id FROM Users, UserCompany, Companies WHERE Users.username = \'' + self.username + '\' AND Users.username = UserCompany.username AND Companies.company_id = UserCompany.company_id) AND Users.username = UserCompany.username) and Users.username = \'' +  username + '\''
-		self.cursor.execute(query)
+		
+	# Validate for password
+	def check_password(self, msg):
+		self.message_send(msg)
+		password = self.message_recv()
+		self.cursor.execute("SELECT * FROM Users WHERE username  = %s", self.username)
 		row = self.cursor.fetchall()
-		if len(row) != 1:
-			return "Sorry, no match found"
+		if row[0]['password'] == password: # Password is correct
+			self.welcome_menu("Welcome to MotiGroup\n")
 		else:
-			#msg = "You have selected \n" 
-			#msg += row[0]['username'] + ": " + row[0]['firstName'] + " " + row[0]['lastName'] + "\n"
-			msg = ""
-			choice = "Your choice is to grade " + row[0]['username'] + ": " + row[0]['firstName'] + " " + row[0]['lastName'] + "? [y/n]\n"
-			if self.get_confirmation(choice):
-				self.user_browsing = row[0]['username']
-				msg += self.grade_user()
-			return msg
+			self.check_password("Sorry, password incorrect, please try again")
 
+
+	# This is the first menu that shows up when a user logged in
+	def welcome_menu(self, msg):
+		options = {0: 'Please enter a username (UUN) or type:', 1: 'Account Status', 2: 'List of usernames', 3: 'Manage company', 4: 'View my companies', 5: 'Assigned Grades'}
+		msg += options[0]
+		for i in range(1, len(options)):
+			msg += "\n\t" + str(i) + ") " + options[i]
+		self.message_send(msg)
+		response = self.message_recv()
+		if response == '2':
+			msg = self.get_user_list()
+			self.welcome_menu(msg)
+		elif response == '4':
+			msg = self.my_companies()
+			self.welcome_menu(msg)
+		elif response == '5':
+			self.welcome_menu(self.get_prev_grades())
+		elif response == 'q':
+			return
+		else:
+			self.get_user(response)
+			
+
+	# My companies, returns a list of companies you belong to
+	def my_companies(self): 
+		msg = "You belong to the following companies: \n"
+		self.cursor.execute("SELECT Users.username, Companies.company_name FROM Users, UserCompany, Companies WHERE Users.username = %s  AND Users.username = UserCompany.username AND Companies.company_id = UserCompany.company_id", self.username) 
+		rows = self.cursor.fetchall()
+		for i in range(0, len(rows)):
+			msg += "\t" + rows[i]['company_name'] + "\n"
+		return msg
 
 
 	# This returns a string that is a list of users which are reachable by a person
@@ -131,48 +138,74 @@ class ConnectionHandler(threading.Thread):
 		msg += '-------------------------------------------------------------------------------------\n'
 		return msg
 
-	# This returns a string with all companies you belong to
-	def my_companies(self): 
-		msg = "You belong to the following companies: \n"
-		self.cursor.execute("SELECT Users.username, Companies.company_name FROM Users, UserCompany, Companies WHERE Users.username = %s  AND Users.username = UserCompany.username AND Companies.company_id = UserCompany.company_id", self.username) 
-		rows = self.cursor.fetchall()
-		for i in range(0, len(rows)):
-			msg += "\t" + rows[i]['company_name'] + "\n"
-		return msg
-
-	# This is the first menu that shows up when a user logged in
-	def welcome_menu(self):
-		options = {0: 'Please enter a username (UUN) or type:', 1: 'Account Status', 2: 'List of usernames', 3: 'Manage company', 4: 'View my companies'}
-		msg = options[0]
-		for i in range(1, len(options)):
-			msg += "\n\t" + str(i) + ") " + options[i]
-		return msg
-
-	def request_login_username(self):
-		msg = "Please enter your username"
-		self.current_window = window['login_username']
-		return msg
-
-	def validate_login_username(self, username):
-		if not self.user_exist(username):        # Username is invalid
-			msg = "Sorry, username not found\nPlease enter your username"
-		else:                    # Username is valid
-			self.username = username
-			#msg = "Please enter your password "
-			#self.current_window = window['login_password']
-			self.current_window = window['welcome_menu'] # #DEBUG#  This is for bypassing password
-			msg = self.welcome_menu()
-		return msg
-
-	def validate_login_password(self, password):
-		self.cursor.execute("SELECT * FROM Users WHERE username  = %s", self.username)
+	# Find a user related to us
+	def get_user(self, username):
+		query = 'SELECT * FROM Users WHERE Users.username IN (SELECT Users.username FROM Users, UserCompany WHERE UserCompany.company_id IN (SELECT Companies.company_id FROM Users, UserCompany, Companies WHERE Users.username = \'' + self.username + '\' AND Users.username = UserCompany.username AND Companies.company_id = UserCompany.company_id) AND Users.username = UserCompany.username) and Users.username = \'' +  username + '\''
+		self.cursor.execute(query)
 		row = self.cursor.fetchall()
-		if row[0]['password'] == password: # Password is correct
-			self.current_window = window['welcome_menu']
-			msg = self.welcome_menu()
+		if len(row) != 1:
+			self.welcome_menu("Sorry, no match found\n")
 		else:
-			msg = "Sorry, password incorrect, please try again"
+			self.user_browsing = row[0]['username']
+			choice = "Your choice is to grade " + row[0]['username'] + ": " + row[0]['firstName'] + " " + row[0]['lastName'] + "? [y/n]"
+			if self.get_confirmation(choice):
+				self.grade_user()
+			else:
+				self.welcome_menu("You abandoned inputing data\n")
+
+	def grade_user(self):
+		can_grade = self.can_grade()
+		if can_grade[0] == 0:
+			grade = self.request_grade(can_grade[1])
+			self.welcome_menu("You have successfully graded " + self.user_browsing + "\n")
+		else:
+			self.welcome_menu(can_grade[1])
+
+	# Previously graded
+	def get_prev_grades(self):
+		query = "SELECT * FROM Grades WHERE Timestamp > DATE_SUB(NOW(), INTERVAL DAYOFMONTH(NOW()) DAY) AND Grades.From = \'" + self.username + "\'"
+		self.cursor.execute(query)
+		total = 0
+		rows = self.cursor.fetchall()
+		msg = "Current Grading : \n{0:25}{1:10}\n".format("Username", "Grade")
+		msg += "--------------------------------------------------------------\n"
+		for i in range(0, len(rows)):
+			msg += "{0:25}{1:3}\n".format(rows[i]['To'], rows[i]['Grade'])
+			total += rows[i]['Grade']
+		msg += "You now have " + str(100-total) + " points to give out\n"
 		return msg
+
+
+
+	# Verify user is still eligible to grade someone
+	def can_grade(self):
+		query = "SELECT SUM(Grade) FROM Grades WHERE Timestamp > DATE_SUB(NOW(), INTERVAL DAYOFMONTH(NOW()) DAY) AND Grades.From = \'" + self.username + "\'"
+		self.cursor.execute(query)
+		rows = self.cursor.fetchall()
+		total = rows[0]['SUM(Grade)']
+
+		if self.username == self.user_browsing:
+			msg = "You cannot give yourself a grade\n"
+			return (1,msg)
+		elif total >= 100 and total != None:
+			print type(total)
+			msg = "You have already reached your quota this month\n" + self.get_prev_grades()
+			return (2,msg)
+		else: 
+			msg = self.get_prev_grades() + "You can now grade\n" 
+			return (0,msg)
+
+		
+	# Get a confirmation of a message
+	def get_confirmation(self, string):
+		yes = set(['Yes', 'yes', 'y', 'YES', 'Y'])
+		self.message_send(string)
+		confirmation = self.message_recv()
+		if confirmation in yes:
+			return True
+		else:
+			return False
+
 
 	def request_grade(self, msg):
 		msg += "Please enter a valid grade\n"
@@ -186,7 +219,7 @@ class ConnectionHandler(threading.Thread):
 		if grade > 100 or grade < 0:
 			self.request_grade(msg)
 		else:
-			if self.get_confirmation("You have attributed " + str(grade) + " to " + self.user_browsing + " [yes/no] "):
+			if self.get_confirmation("You have attributed " + str(grade) + " to " + self.user_browsing + "?[yes/no]"):
 				try: 
 					query = "INSERT INTO Grades (`From`, `To`, `Timestamp`, `Grade`, `Comment`) VALUES ('" + self.username + "', '" + self.user_browsing + "', CURRENT_TIMESTAMP, '"+ str(grade) +"', '')"
 					self.cursor.execute(query)
@@ -194,75 +227,4 @@ class ConnectionHandler(threading.Thread):
 				except: 
 					print "Error processing query"
 					db.rollback()
-
-					
-			
-
-	# Has to be filled
-	def can_grade(self):
-		# Get a summary 
-		query = "SELECT * FROM Grades WHERE Timestamp > DATE_SUB(NOW(), INTERVAL DAYOFMONTH(NOW()) DAY) AND Grades.From = \'" + self.username + "\'"
-		self.cursor.execute(query)
-		rows = self.cursor.fetchall()
-		total = 0
-		msg = "Current Grading : \n{0:25}{1:10}\n".format("Username", "Grade")
-		msg += "--------------------------------------------------------------\n"
-		for i in range(0, len(rows)):
-			msg += "{0:25}{1:3}\n".format(rows[i]['To'], rows[i]['Grade'])
-			total += rows[i]['Grade']
-		msg += "You now have " + str(100-total) + " points to give out\n"
-		# Check for values
-		
-		if self.username == self.user_browsing:
-			msg+= "You cannot give yourself a grade\n"
-			return (1,msg)
-		elif total >= 100:
-			msg+= "You have already reached your quota this month\n"
-			return (2,msg)
-		else: 
-			return (0,msg)
-
-		
-
-	def grade_user(self):
-		can_grade = self.can_grade()
-
-		if can_grade[0] == 0:
-			grade = self.request_grade(can_grade[1])
-			return "You have Successfully graded " + self.user_browsing + "\n"
-		else:
-			return can_grade[1]
-
-
-
-	def handle_message(self, client_msg):
-		msg = ""
-
-		# Connection established, send request for uun
-		if self.current_window == window['connection_established']:
-			msg += self.request_login_username()
-
-		# Login window
-		elif self.current_window == window['login_username']:
-			msg += self.validate_login_username(client_msg)
-
-		# Validate password
-		elif self.current_window == window['login_password']:
-			msg += self.validate_login_password(client_msg)
-
-		# Welcome page
-		elif self.current_window == window['welcome_menu']:
-			if client_msg ==  '2':
-				msg += self.get_user_list()
-			elif client_msg == '4':
-				msg += self.my_companies()
-			else:
-				msg += self.get_user(client_msg)
-			msg += self.welcome_menu()
-			
-		else:
-			print "dude, this is window " + str(self.current_window) + " and client message was " + client_msg
-			
-		self.message_send(msg)
-		print "\nYour replied to: " + self.socket.getsockname()[0] + str(self.socket.getsockname()[1]) + self.socket.getpeername()[0]  + str(self.socket.getpeername()[1]) + "\n " + msg
 
