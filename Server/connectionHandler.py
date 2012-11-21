@@ -109,7 +109,7 @@ class ConnectionHandler(threading.Thread):
 		else:
 			#msg = "You have selected \n" 
 			#msg += row[0]['username'] + ": " + row[0]['firstName'] + " " + row[0]['lastName'] + "\n"
-			msg = "Processing"
+			msg = ""
 			choice = "Your choice is to grade " + row[0]['username'] + ": " + row[0]['firstName'] + " " + row[0]['lastName'] + "? [y/n]\n"
 			if self.get_confirmation(choice):
 				self.user_browsing = row[0]['username']
@@ -122,12 +122,12 @@ class ConnectionHandler(threading.Thread):
 	def get_user_list(self):
 		query = 'SELECT Users.username, Users.firstName, Users.lastName FROM Users, UserCompany WHERE UserCompany.company_id IN (SELECT Companies.company_id FROM Users, UserCompany, Companies WHERE Users.username = \'' + self.username + '\'AND Users.username = UserCompany.username AND Companies.company_id = UserCompany.company_id) AND Users.username = UserCompany.username ORDER BY lastName'
 		self.cursor.execute(query)
-		row = self.cursor.fetchall()
+		rows = self.cursor.fetchall()
 		msg = "{0:25}{1:25}{2:25}\n".format('Username', 'Last Name', 'First Name')
 		msg += '-------------------------------------------------------------------------------------\n'
-		for i in range(0, len(row)):	
-			if row[i]['username'] != self.username:
-				msg += '{0:25}{1:25}{2:25}\n'.format(row[i]['username'], row[i]['lastName'], row[i]['firstName'])
+		for i in range(0, len(rows)):	
+			if rows[i]['username'] != self.username:
+				msg += '{0:25}{1:25}{2:25}\n'.format(rows[i]['username'], rows[i]['lastName'], rows[i]['firstName'])
 		msg += '-------------------------------------------------------------------------------------\n'
 		return msg
 
@@ -174,16 +174,17 @@ class ConnectionHandler(threading.Thread):
 			msg = "Sorry, password incorrect, please try again"
 		return msg
 
-	def request_grade(self):
-		self.message_send("Please enter a valid grade:")
+	def request_grade(self, msg):
+		msg += "Please enter a valid grade\n"
+		self.message_send(msg)
 		try: 
 			grade = int(self.message_recv())
 		except:
-			self.request_grade()
+			self.request_grade(msg)
 			return
 
 		if grade > 100 or grade < 0:
-			self.request_grade()
+			self.request_grade(msg)
 		else:
 			if self.get_confirmation("You have attributed " + str(grade) + " to " + self.user_browsing + " [yes/no] "):
 				try: 
@@ -199,17 +200,38 @@ class ConnectionHandler(threading.Thread):
 
 	# Has to be filled
 	def can_grade(self):
-		if self.username != self.user_browsing:
-			return True
-		else:
-			return False
+		# Get a summary 
+		query = "SELECT * FROM Grades WHERE Timestamp > DATE_SUB(NOW(), INTERVAL DAYOFMONTH(NOW()) DAY) AND Grades.From = \'" + self.username + "\'"
+		self.cursor.execute(query)
+		rows = self.cursor.fetchall()
+		total = 0
+		msg = "Current Grading : \n{0:25}{1:10}\n".format("Username", "Grade")
+		msg += "--------------------------------------------------------------\n"
+		for i in range(0, len(rows)):
+			msg += "{0:25}{1:3}\n".format(rows[i]['To'], rows[i]['Grade'])
+			total += rows[i]['Grade']
+		msg += "You now have " + str(100-total) + " points to give out\n"
+		# Check for values
+		
+		if self.username == self.user_browsing:
+			msg+= "You cannot give yourself a grade\n"
+			return (1,msg)
+		elif total >= 100:
+			msg+= "You have already reached your quota this month\n"
+			return (2,msg)
+		else: 
+			return (0,msg)
+
+		
 
 	def grade_user(self):
-		if self.can_grade():
-			grade = self.request_grade()
-			return "You have Successfully graded" + self.user_browsing + "\n"
+		can_grade = self.can_grade()
+
+		if can_grade[0] == 0:
+			grade = self.request_grade(can_grade[1])
+			return "You have Successfully graded " + self.user_browsing + "\n"
 		else:
-			return "Sorry, this grading is not possible, You should know why\n" 
+			return can_grade[1]
 
 
 
