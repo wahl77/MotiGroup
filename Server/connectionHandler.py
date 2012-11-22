@@ -80,7 +80,7 @@ class ConnectionHandler(threading.Thread):
 	def login(self):
 		self.username = self.send_recv()
 		if self.user_exist(self.username):        # Username is invalid
-			self.check_password()
+			#self.check_password()
 			self.welcome_menu()
 		else:
 			self.msg = "Sorry, username not found\nPlease enter your username"
@@ -112,7 +112,7 @@ class ConnectionHandler(threading.Thread):
 			if response == '2':
 				self.get_user_list()
 			elif response == '4':
-				self.my_companies()
+				self.print_companies(self.username)
 			elif response == '5':
 				self.get_prev_grades()
 			elif response == 'q':
@@ -122,13 +122,22 @@ class ConnectionHandler(threading.Thread):
 		
 			
 
-	# My companies, returns a list of companies you belong to
-	def my_companies(self): 
+	def print_companies(self, user):
 		self.msg = "You belong to the following companies: \n"
-		self.cursor.execute("SELECT Users.username, Companies.company_name FROM Users, UserCompany, Companies WHERE Users.username = %s  AND Users.username = UserCompany.username AND Companies.company_id = UserCompany.company_id", self.username) 
-		rows = self.cursor.fetchall()
+		rows = self.get_companies_list(user)
+		self.msg +="{0:20}{1:5}\n".format("Company Name", "Administrator")
 		for i in range(0, len(rows)):
-			self.msg += "\t" + rows[i]['company_name'] + "\n"
+			if rows[i]['is_admin'] == 1:
+				self.msg += "{0:20}{1:5}".format(rows[i]['company_name'], "Yes\n")
+			else:
+				self.msg += "{0:20}{1:5}".format(rows[i]['company_name'], "No\n")
+			
+	# My companies, returns a list of companies you belong to
+	def get_companies_list(self, user): 
+		self.cursor.execute("SELECT Users.username, Companies.company_name, UserCompany.is_admin FROM Users, UserCompany, Companies WHERE Users.username = %s  AND Users.username = UserCompany.username AND Companies.company_id = UserCompany.company_id", user) 
+		return self.cursor.fetchall()
+
+
 
 
 	# This returns a string that is a list of users which are reachable by a person
