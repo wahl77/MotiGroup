@@ -14,6 +14,7 @@ class ConnectionHandler(threading.Thread):
 		threading.Thread.__init__(self)
 		self.username = ""
 		self.user_browsing = ""
+		self.msg = ""
 		with db:
 			self.cursor = db.cursor(mdb.cursors.DictCursor)
 
@@ -36,11 +37,16 @@ class ConnectionHandler(threading.Thread):
 				self.message_send(msg[1000:])
 	
 	def run(self):
-		self.login("Welcome to MotiGroup\nPlease enter you login")
+		self.msg = "Welcome to MotiGroup\nPlease enter you login"
+		self.login()
 		print "Socket closing" 
 		self.message_send('EOF')
 		self.socket.close()
 	
+
+	def send_recv(self):
+		self.message_send(self.msg)
+		return self.message_recv()
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
@@ -71,60 +77,58 @@ class ConnectionHandler(threading.Thread):
 		
 		
 	# Get username at login
-	def login(self, msg):
-		self.message_send(msg)
-		self.username = self.message_recv()
+	def login(self):
+		self.username = self.send_recv()
 		if self.user_exist(self.username):        # Username is invalid
-#			self.check_password("Please enter your password\n")
-			self.welcome_menu("Welcom\n")
+			self.check_password()
+			self.welcome_menu()
 		else:
-		  self.login("Sorry, username not found\nPlease enter your username")
+			self.msg = "Sorry, username not found\nPlease enter your username"
+			self.login()
 
 		
 	# Validate for password
-	def check_password(self, msg):
-		self.message_send(msg)
-		password = self.message_recv()
+	def check_password(self):
+		self.msg="Please enter your password\n"
+		password = self.send_recv()
 		self.cursor.execute("SELECT * FROM Users WHERE username  = %s", self.username)
 		row = self.cursor.fetchall()
 		if row[0]['password'] == password: # Password is correct
-			self.welcome_menu("Welcome to MotiGroup\n")
+			self.msg = "Welcome to MotiGroup\n"
+			return
 		else:
-			self.check_password("Sorry, password incorrect, please try again")
+			self.msg = "Sorry, password incorrect, please try again"
+			self.check_password()
 
 
 	# This is the first menu that shows up when a user logged in
-	def welcome_menu(self, msg):
-		options = {0: 'Please enter a username (UUN) or type:', 1: 'Account Status', 2: 'List of usernames', 3: 'Manage company', 4: 'View my companies', 5: 'Assigned Grades'}
-		msg += options[0]
-		for i in range(1, len(options)):
-			msg += "\n\t" + str(i) + ") " + options[i]
-		response = ""
-		self.message_send(msg)
-		response = self.message_recv()
-		if response == '2':
-			msg = self.get_user_list()
-			self.welcome_menu(msg)
-		elif response == '4':
-			msg = self.my_companies()
-			self.welcome_menu(msg)
-		elif response == '5':
-			self.welcome_menu(self.get_prev_grades())
-		elif response == 'q':
-			return
-		else:
-			self.get_user(response)
+	def welcome_menu(self):
+		while True:
+			options = {0: 'Please enter a username (UUN) or type:', 1: 'Account Status', 2: 'List of usernames', 3: 'Manage company', 4: 'View my companies', 5: 'Assigned Grades'}
+			self.msg += options[0]
+			for i in range(1, len(options)):
+				self.msg += "\n\t" + str(i) + ") " + options[i]
+			response = self.send_recv()
+			if response == '2':
+				self.get_user_list()
+			elif response == '4':
+				self.my_companies()
+			elif response == '5':
+				self.get_prev_grades()
+			elif response == 'q':
+				break
+			else:
+				self.get_user(response)
 		
 			
 
 	# My companies, returns a list of companies you belong to
 	def my_companies(self): 
-		msg = "You belong to the following companies: \n"
+		self.msg = "You belong to the following companies: \n"
 		self.cursor.execute("SELECT Users.username, Companies.company_name FROM Users, UserCompany, Companies WHERE Users.username = %s  AND Users.username = UserCompany.username AND Companies.company_id = UserCompany.company_id", self.username) 
 		rows = self.cursor.fetchall()
 		for i in range(0, len(rows)):
-			msg += "\t" + rows[i]['company_name'] + "\n"
-		return msg
+			self.msg += "\t" + rows[i]['company_name'] + "\n"
 
 
 	# This returns a string that is a list of users which are reachable by a person
@@ -132,13 +136,12 @@ class ConnectionHandler(threading.Thread):
 		query = 'SELECT Users.username, Users.firstName, Users.lastName FROM Users, UserCompany WHERE UserCompany.company_id IN (SELECT Companies.company_id FROM Users, UserCompany, Companies WHERE Users.username = \'' + self.username + '\'AND Users.username = UserCompany.username AND Companies.company_id = UserCompany.company_id) AND Users.username = UserCompany.username ORDER BY lastName'
 		self.cursor.execute(query)
 		rows = self.cursor.fetchall()
-		msg = "{0:25}{1:25}{2:25}\n".format('Username', 'Last Name', 'First Name')
-		msg += '-------------------------------------------------------------------------------------\n'
+		self.msg = "{0:25}{1:25}{2:25}\n".format('Username', 'Last Name', 'First Name')
+		self.msg += '-------------------------------------------------------------------------------------\n'
 		for i in range(0, len(rows)):	
 			if rows[i]['username'] != self.username:
-				msg += '{0:25}{1:25}{2:25}\n'.format(rows[i]['username'], rows[i]['lastName'], rows[i]['firstName'])
-		msg += '-------------------------------------------------------------------------------------\n'
-		return msg
+				self.msg += '{0:25}{1:25}{2:25}\n'.format(rows[i]['username'], rows[i]['lastName'], rows[i]['firstName'])
+		self.msg += '-------------------------------------------------------------------------------------\n'
 
 	# Find a user related to us
 	def get_user(self, username):
@@ -146,14 +149,17 @@ class ConnectionHandler(threading.Thread):
 		self.cursor.execute(query)
 		row = self.cursor.fetchall()
 		if len(row) != 1:
-			self.welcome_menu("Sorry, no match found\n")
+			self.msg = "Sorry, no match found\n"
+			return
 		else:
 			self.user_browsing = row[0]['username']
 			choice = "Your choice is to grade " + row[0]['username'] + ": " + row[0]['firstName'] + " " + row[0]['lastName'] + "? [y/n]"
-			if self.get_confirmation(choice):
-				self.request_grade(self.get_prev_grades())
+			self.msg = choice
+			if self.get_confirmation():
+				self.request_grade()
 			else:
-				self.welcome_menu("You abandoned inputing data\n")
+				self.msg = "You abandonned inputing data\n"
+				return
 
 	# Previously graded table, returns a string
 	def get_prev_grades(self):
@@ -161,13 +167,12 @@ class ConnectionHandler(threading.Thread):
 		self.cursor.execute(query)
 		total = 0
 		rows = self.cursor.fetchall()
-		msg = "Current Grading : \n{0:25}{1:10}\n".format("Username", "Grade")
-		msg += "--------------------------------------------------------------\n"
+		self.msg = "Current Grading : \n{0:25}{1:10}\n".format("Username", "Grade")
+		self.msg += "--------------------------------------------------------------\n"
 		for i in range(0, len(rows)):
-			msg += "{0:25}{1:3}\n".format(rows[i]['To'], rows[i]['Grade'])
+			self.msg += "{0:25}{1:3}\n".format(rows[i]['To'], rows[i]['Grade'])
 			total += rows[i]['Grade']
-		msg += "You now have " + str(100-total) + " points to give out\n"
-		return msg
+		self.msg += "You now have " + str(100-total) + " points to give out\n"
 
 
 	# Make sure grade is valid and user is eligible to grade
@@ -182,21 +187,19 @@ class ConnectionHandler(threading.Thread):
 		else:
 			total += grade
 
-		if self.username == self.user_browsing:
-			msg = "You cannot give yourself a grade\n"
-			return (1,msg)
+		if self.username == self.user_browsing or grade == 0:
+			self.msg = "You cannot give yourself a grade nor can you give a 0 grade\n"
+			return False
 		if total > 100:
-			msg = "This would exceeded your quota this month\n"
-			return (2,msg)
+			self.msg = "This would exceeded your quota this month\n"
+			return False
 		else: 
-			msg = "You can now grade\n" 
-			return (0,msg)
+			return True
 
 	# Get a confirmation of a message
-	def get_confirmation(self, string):
+	def get_confirmation(self, ):
 		yes = set(['Yes', 'yes', 'y', 'YES', 'Y'])
-		self.message_send(string)
-		confirmation = self.message_recv()
+		confirmation = self.send_recv()
 		if confirmation in yes:
 			return True
 		else:
@@ -204,29 +207,25 @@ class ConnectionHandler(threading.Thread):
 	
 
 	# Get a grade from user
-	def request_grade(self, msg):
-		msg += "Please enter a valid grade or hit q for main menu\n"
-		self.message_send(msg)
-		value = self.message_recv()
-
+	def request_grade(self):
+		self.msg = "Please enter a valid grade or hit q for main menu\n"
+		value = self.send_recv()
 		try: 
 			grade = int(value)
 		except:
-			self.welcome_menu("Welcome back to main menu")
+			self.msg = "Welcome back to main menu\n"
+			return
 
-		grade_response = self.validate_grade(grade)
-		if not grade_response[0] == 0:
-			if grade_response[0] == 1:
-				self.welcome_menu("Welcome back\n")
-			self.request_grade(grade_response[1])
+		if not self.validate_grade(grade):
+			return	
 		else:
-			if self.get_confirmation("You have attributed " + str(grade) + " to " + self.user_browsing + "?[yes/no]"):
+			self.msg = "You have attributed " + str(grade) + " to " + self.user_browsing + "?[yes/no]"
+			if self.get_confirmation():
 				try: 
 					query = "INSERT INTO Grades (`From`, `To`, `Timestamp`, `Grade`, `Comment`) VALUES ('" + self.username + "', '" + self.user_browsing + "', CURRENT_TIMESTAMP, '"+ str(grade) +"', '')"
 					self.cursor.execute(query)
 					db.commit()
+					self.msg = "Grade assigned properly.\nWelcome back to main menu"
 				except: 
 					print "Error processing query"
 					db.rollback()
-				self.welcome_menu("Welcome back to main menu")
-
