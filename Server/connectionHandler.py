@@ -123,22 +123,19 @@ class ConnectionHandler(threading.Thread):
 			
 
 	def print_companies(self, user):
-		self.msg = "You belong to the following companies: \n"
+		self.msg = "You belong to the following companies:\n"
 		rows = self.get_companies_list(user)
 		self.msg +="{0:20}{1:5}\n".format("Company Name", "Administrator")
 		for i in range(0, len(rows)):
 			if rows[i]['is_admin'] == 1:
-				self.msg += "{0:20}{1:5}".format(rows[i]['company_name'], "Yes\n")
+				self.msg += "{0:20}{1:5}\n".format(rows[i]['company_name'], "Yes")
 			else:
-				self.msg += "{0:20}{1:5}".format(rows[i]['company_name'], "No\n")
+				self.msg += "{0:20}{1:5}\n".format(rows[i]['company_name'], "No")
 			
 	# My companies, returns a list of companies you belong to
 	def get_companies_list(self, user): 
 		self.cursor.execute("SELECT Users.username, Companies.company_name, UserCompany.is_admin FROM Users, UserCompany, Companies WHERE Users.username = %s  AND Users.username = UserCompany.username AND Companies.company_id = UserCompany.company_id", user) 
 		return self.cursor.fetchall()
-
-
-
 
 	# This returns a string that is a list of users which are reachable by a person
 	def get_user_list(self):
