@@ -177,12 +177,16 @@ class ConnectionHandler(threading.Thread):
 		rows = self.cursor.fetchall()
 		total = rows[0]['SUM(Grade)']
 
+		if total == None:
+			total = grade
+		else:
+			total += grade
+
 		if self.username == self.user_browsing:
 			msg = "You cannot give yourself a grade\n"
 			return (1,msg)
-		elif total != None:
-			if (total+grade) > 100 or grade > 100:
-				msg = "You have exceeded your quota this month\n"
+		if total > 100:
+			msg = "This would exceeded your quota this month\n"
 			return (2,msg)
 		else: 
 			msg = "You can now grade\n" 
