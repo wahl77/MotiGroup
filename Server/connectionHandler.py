@@ -111,6 +111,8 @@ class ConnectionHandler(threading.Thread):
 			response = self.send_recv()
 			if response == '2':
 				self.get_user_list()
+			elif response == '3':
+				self.manage_companies_list()
 			elif response == '4':
 				self.print_companies(self.username)
 			elif response == '5':
@@ -121,6 +123,33 @@ class ConnectionHandler(threading.Thread):
 				self.get_user(response)
 		
 			
+
+
+	# Returns a list of companies manageable by a user
+	def manage_companies_list(self):
+		rows = self.get_companies_list(self.username)
+		has_admin = False
+		self.msg = "You can administer the following companies\n"
+		counter = 0
+		company_under_management = []
+		for i in range(0, len(rows)):
+				if rows[i]['is_admin'] == 1:
+					has_admin = True
+					counter += 1
+					self.msg += "{0:3}){1:20}\n".format(counter, rows[i]['company_name'])
+					company_under_management.append(rows[i]['company_id'])
+		if has_admin == False:
+			self.msg = "Sorry, you cannot administer a company"
+			return
+		else: 
+			self.manage_company(company_under_management)
+			return
+	
+	def manage_company(self, companies):
+		self.msg += "Please select a company to manage"
+		company = self.send_recv()
+		self.msg = "You chose to administer company with id :" + str(companies[int(company)-1])
+		return
 
 	def print_companies(self, user):
 		self.msg = "You belong to the following companies:\n"
@@ -134,7 +163,7 @@ class ConnectionHandler(threading.Thread):
 			
 	# My companies, returns a list of companies you belong to
 	def get_companies_list(self, user): 
-		self.cursor.execute("SELECT Users.username, Companies.company_name, UserCompany.is_admin FROM Users, UserCompany, Companies WHERE Users.username = %s  AND Users.username = UserCompany.username AND Companies.company_id = UserCompany.company_id", user) 
+		self.cursor.execute("SELECT Users.username, Companies.company_name, UserCompany.is_admin, Companies.company_id FROM Users, UserCompany, Companies WHERE Users.username = %s  AND Users.username = UserCompany.username AND Companies.company_id = UserCompany.company_id", user) 
 		return self.cursor.fetchall()
 
 	# This returns a string that is a list of users which are reachable by a person
