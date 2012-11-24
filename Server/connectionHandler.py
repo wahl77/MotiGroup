@@ -122,9 +122,6 @@ class ConnectionHandler(threading.Thread):
 			else:
 				self.get_user(response)
 		
-			
-
-
 	# Returns a list of companies manageable by a user
 	def manage_companies_list(self):
 		rows = self.get_companies_list(self.username)
@@ -139,16 +136,31 @@ class ConnectionHandler(threading.Thread):
 					self.msg += "{0:3}){1:20}\n".format(counter, rows[i]['company_name'])
 					company_under_management.append(rows[i]['company_id'])
 		if has_admin == False:
-			self.msg = "Sorry, you cannot administer a company"
+			self.msg = "Sorry, you cannot administer a company\n"
 			return
 		else: 
 			self.manage_company(company_under_management)
 			return
 	
 	def manage_company(self, companies):
-		self.msg += "Please select a company to manage"
+		self.msg += "Please select a company to manage\n"
 		company = self.send_recv()
-		self.msg = "You chose to administer company with id :" + str(companies[int(company)-1])
+		self.msg = "You chose to administer company with id :" + str(companies[int(company)-1]) + "\n"
+		self.administer_company(int(companies[int(company)-1]))
+
+	def administer_company(self, company_id):
+		# Add user
+		# Delete user
+		# View user profile
+		return
+
+	def add_user(company_id):
+		return
+
+	def delete_user(company_id):
+		return
+
+	def view_user(company_id):
 		return
 
 	def print_companies(self, user):
