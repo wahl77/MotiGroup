@@ -1,0 +1,16 @@
+<html>
+<body>
+	<H1>Hello World ${name}, your password is ${password}</H1>
+	<TABLE>
+			<tr>
+
+				<h2>You work for the followin companies</h2>
+				% for i in range(0,len(items)):
+				<li>${items[i]['company_name']}</li>
+				% endfor
+
+			</tr>
+
+	</TABLE>
+</body>
+</html>
