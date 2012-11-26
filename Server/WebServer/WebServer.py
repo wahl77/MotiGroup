@@ -12,7 +12,7 @@ cursor = db.cursor(mdb.cursors.DictCursor)
 #This class will handles any incoming request from
 #the browser 
 class myHandler(BaseHTTPRequestHandler):
-	user = ""
+	username = ""
 	
 	#Handler for the GET requests
 	def do_GET(self):
@@ -62,23 +62,45 @@ class myHandler(BaseHTTPRequestHandler):
 			environ={'REQUEST_METHOD':'POST',
 		               'CONTENT_TYPE':self.headers['Content-Type'],
 		})
-		if self.path=="/Welcome.html":
+		if self.path=="/welcome.html":
 			self.send_response(200)
 			self.send_header('Content-type','text/html')
 			self.end_headers()
-			self.user = form["your_name"].value
+			self.username = form["your_name"].value
 			password = form["your_password"].value
 			if not self.check_password(password):
 				txt = Template(filename = 'user_not_found.html').render()
 			else:
 				items = self.get_companies_list()
-				txt = Template(filename = 'welcome.html').render(name=self.user, password="abc", items = items)
+				txt = Template(filename = 'welcome.html').render(name=self.username, password="abc", items = items)
 
 			self.wfile.write(txt)
 			return
+		if self.path == "/grades.html":
+			print self.username
+			self.send_response(200)
+			self.send_header('Content-type','text/html')
+			self.end_headers()
+			print self.username
+			rows = self.get_prev_grades()
+			txt = Template(filename = 'grades.html').render(rows = rows)
+			self.wfile.write(txt)
+
+
+
+	def get_user_list(self):
+		query = 'SELECT Users.username, Users.firstName, Users.lastName FROM Users, UserCompany WHERE UserCompany.company_id IN (SELECT Companies.company_id FROM Users, UserCompany, Companies WHERE Users.username = \'' + self.username + '\'AND Users.username = UserCompany.username AND Companies.company_id = UserCompany.company_id) AND Users.username = UserCompany.username ORDER BY lastName'
+		cursor.execute(query)
+		return cursor.fetchall()
+
+	# Previously graded table, returns a string
+	def get_prev_grades(self):
+		query = "SELECT * FROM Grades WHERE Timestamp > DATE_SUB(NOW(), INTERVAL DAYOFMONTH(NOW()) DAY) AND Grades.From = \'" + self.username + "\'"
+		cursor.execute(query)
+		return cursor.fetchall()
 
 	def check_password(self, password):
-		cursor.execute("SELECT * FROM Users WHERE username  = %s", self.user)
+		cursor.execute("SELECT * FROM Users WHERE username  = %s", self.username)
 		row = cursor.fetchall()
 		if len(row) == 1 and row[0]['password'] == password: # Password is correct
 			return True
@@ -86,7 +108,7 @@ class myHandler(BaseHTTPRequestHandler):
 			return False
 
 	def get_companies_list(self): 
-		cursor.execute("SELECT Users.username, Companies.company_name, UserCompany.is_admin, Companies.company_id FROM Users, UserCompany, Companies WHERE Users.username = %s  AND Users.username = UserCompany.username AND Companies.company_id = UserCompany.company_id", self.user) 
+		cursor.execute("SELECT Users.username, Companies.company_name, UserCompany.is_admin, Companies.company_id FROM Users, UserCompany, Companies WHERE Users.username = %s  AND Users.username = UserCompany.username AND Companies.company_id = UserCompany.company_id", self.username) 
 		return cursor.fetchall()
 
 
