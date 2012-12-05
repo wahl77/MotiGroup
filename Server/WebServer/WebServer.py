@@ -2,57 +2,36 @@
 from BaseHTTPServer import BaseHTTPRequestHandler,HTTPServer
 from os import curdir, sep
 import cgi
+import os
 from mako.template import Template
 import MySQLdb as mdb
+import Cookie
+import time
+import sha
 
 PORT_NUMBER = 8080
 
 db = mdb.connect(host='localhost', user='root', passwd='', db='MotiGroup')
+
 cursor = db.cursor(mdb.cursors.DictCursor)
 #This class will handles any incoming request from
 #the browser 
 class myHandler(BaseHTTPRequestHandler):
-	username = ""
 	
 	#Handler for the GET requests
 	def do_GET(self):
 		if self.path=="/":
 			self.path="/index.html"
 
-		try:
-			#Check the file extension required and
-			#set the right mime type
 
-			sendReply = False
-			if self.path.endswith(".html"):
-				mimetype='text/html'
-				sendReply = True
-			if self.path.endswith(".jpg"):
-				mimetype='image/jpg'
-				sendReply = True
-			if self.path.endswith(".gif"):
-				mimetype='image/gif'
-				sendReply = True
-			if self.path.endswith(".js"):
-				mimetype='application/javascript'
-				sendReply = True
-			if self.path.endswith(".css"):
-				mimetype='text/css'
-				sendReply = True
-
-			if sendReply == True:
-				#Open the static file requested and send it
-				f = open(curdir + sep + self.path) 
-				self.send_response(200)
-				self.send_header('Content-type',mimetype)
-				self.end_headers()
-				self.wfile.write(f.read())
-				f.close()
+			#Open the static file requested and send it
+			f = open(curdir + sep + self.path) 
+			self.send_response(200)
+			self.send_header('Content-type:','text/html')
+			self.end_headers()
+			self.wfile.write(f.read())
+			f.close()
 			return
-
-
-		except IOError:
-			self.send_error(404,'File Not Found: %s' % self.path)
 
 	#Handler for the POST requests
 	def do_POST(self):
@@ -62,53 +41,63 @@ class myHandler(BaseHTTPRequestHandler):
 			environ={'REQUEST_METHOD':'POST',
 		               'CONTENT_TYPE':self.headers['Content-Type'],
 		})
+
+
 		if self.path=="/welcome.html":
-			self.send_response(200)
-			self.send_header('Content-type','text/html')
-			self.end_headers()
-			self.username = form["your_name"].value
+			username = form["your_name"].value
 			password = form["your_password"].value
-			if not self.check_password(password):
+
+			if not self.check_password(username, password):
+				self.send_response(200)
+				self.send_header('Content-type','text/html')
+				self.end_headers()
 				txt = Template(filename = 'user_not_found.html').render()
+				return
+				
 			else:
-				items = self.get_companies_list()
-				txt = Template(filename = 'welcome.html').render(name=self.username, password="abc", items = items)
+				session_id = sha.new(repr(time.time())).hexdigest()
+				cookie = Cookie.SimpleCookie()
+				cookie['username'] = username
+				cookie['sid'] = session_id
+				self.send_response(200)
+				self.send_header('Content-type','text/html')
+				self.send_header('Set-Cookie',cookie.output())
+
+			items = self.get_companies_list(username)
+			self.end_headers()
+			txt = Template(filename = 'welcome.html').render(name=username, items = items)
 
 			self.wfile.write(txt)
 			return
+
+		if self.headers.has_key('cookie'):
+			cookie = Cookie.SimpleCookie(self.headers.getheader("cookie"))
+			username = cookie["username"].value
+
 		if self.path == "/grades.html":
-			print self.username
 			self.send_response(200)
 			self.send_header('Content-type','text/html')
 			self.end_headers()
-			print self.username
-			rows = self.get_prev_grades()
-			txt = Template(filename = 'grades.html').render(rows = rows)
+			rows = self.get_prev_grades(username)
+			txt = Template(filename = 'grades.html').render(rows=rows)
 			self.wfile.write(txt)
+			return
 
-
-
-	def get_user_list(self):
-		query = 'SELECT Users.username, Users.firstName, Users.lastName FROM Users, UserCompany WHERE UserCompany.company_id IN (SELECT Companies.company_id FROM Users, UserCompany, Companies WHERE Users.username = \'' + self.username + '\'AND Users.username = UserCompany.username AND Companies.company_id = UserCompany.company_id) AND Users.username = UserCompany.username ORDER BY lastName'
-		cursor.execute(query)
-		return cursor.fetchall()
-
-	# Previously graded table, returns a string
-	def get_prev_grades(self):
-		query = "SELECT * FROM Grades WHERE Timestamp > DATE_SUB(NOW(), INTERVAL DAYOFMONTH(NOW()) DAY) AND Grades.From = \'" + self.username + "\'"
-		cursor.execute(query)
-		return cursor.fetchall()
-
-	def check_password(self, password):
-		cursor.execute("SELECT * FROM Users WHERE username  = %s", self.username)
+	def check_password(self, username, password):
+		cursor.execute("SELECT * FROM Users WHERE username  = %s", username)
 		row = cursor.fetchall()
 		if len(row) == 1 and row[0]['password'] == password: # Password is correct
 			return True
 		else:
 			return False
 
-	def get_companies_list(self): 
-		cursor.execute("SELECT Users.username, Companies.company_name, UserCompany.is_admin, Companies.company_id FROM Users, UserCompany, Companies WHERE Users.username = %s  AND Users.username = UserCompany.username AND Companies.company_id = UserCompany.company_id", self.username) 
+	def get_companies_list(self, username): 
+		cursor.execute("SELECT Users.username, Companies.company_name, UserCompany.is_admin, Companies.company_id FROM Users, UserCompany, Companies WHERE Users.username = %s  AND Users.username = UserCompany.username AND Companies.company_id = UserCompany.company_id", username) 
+		return cursor.fetchall()
+
+	def get_prev_grades(self, username):
+		query = "SELECT * FROM Grades WHERE Timestamp > DATE_SUB(NOW(), INTERVAL DAYOFMONTH(NOW()) DAY) AND Grades.From = \'" + username + "\'"
+		cursor.execute(query)
 		return cursor.fetchall()
 
 
@@ -125,3 +114,4 @@ except KeyboardInterrupt:
 	print '^C received, shutting down the web server'
 	server.socket.close()
 	
+

@@ -1,13 +1,11 @@
 <html>
 <body>
-	<H1>Hello ${name} to MotiGroup,</H1>
-	<H2>Because sometimes you just want to say Thank you!</H2>
 	<TABLE>
 			<tr>
 
 				<h2>You work for the followin companies</h2>
-				% for i in range(0,len(items)):
-				<li>${items[i]['company_name']}</li>
+				% for i in range(0,len(rows)):
+				<li>${rows[i]['To']} - ${rows[i]['Grade']}</li>
 				% endfor
 
 			</tr>
