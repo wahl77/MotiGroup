@@ -1,13 +1,12 @@
 <html>
 <body>
-	<H1>Hello ${name} to MotiGroup,</H1>
-	<H2>Because sometimes you just want to say Thank you!</H2>
 	<TABLE>
 			<tr>
 
-				<h2>You work for the followin companies</h2>
-				% for i in range(0,len(items)):
-				<li>${items[i]['company_name']}</li>
+				<h2>You have access to the following users</h2>
+
+				% for i in range(0,len(rows)):
+				<li>${rows[i]['username']} - ${rows[i]['lastName']} ${rows[i]['firstName']}</li>
 				% endfor
 
 			</tr>
@@ -22,11 +21,9 @@
 
 <form method="POST" action="/grades.html">
 <input type="submit" value="grades"/>
-</form>
 
 <form method="POST" action="/users.html">
 <input type="submit" value="users"/>
-</form>
 
 </body>
 </html>

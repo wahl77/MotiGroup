@@ -83,6 +83,15 @@ class myHandler(BaseHTTPRequestHandler):
 			self.wfile.write(txt)
 			return
 
+		if self.path == "/users.html":
+			self.send_response(200)
+			self.send_header('Content-type','text/html')
+			self.end_headers()
+			rows = self.get_user_list(username)
+			txt = Template(filename = 'users.html').render(rows=rows)
+			self.wfile.write(txt)
+			return
+
 	def check_password(self, username, password):
 		cursor.execute("SELECT * FROM Users WHERE username  = %s", username)
 		row = cursor.fetchall()
@@ -100,6 +109,12 @@ class myHandler(BaseHTTPRequestHandler):
 		cursor.execute(query)
 		return cursor.fetchall()
 
+	def get_user_list(self, username):
+		query = 'SELECT Users.username, Users.firstName, Users.lastName FROM Users, UserCompany WHERE UserCompany.company_id IN (SELECT Companies.company_id FROM Users, UserCompany, Companies WHERE Users.username = \'' + username + '\'AND Users.username = UserCompany.username AND Companies.company_id = UserCompany.company_id) AND Users.username = UserCompany.username ORDER BY lastName'
+		cursor.execute(query)
+		rows = cursor.fetchall()
+		return rows
+		self.msg = "{0:25}{1:25}{2:25}\n".format('Username', 'Last Name', 'First Name')
 
 try:
 	#Create a web server and define the handler to manage the
