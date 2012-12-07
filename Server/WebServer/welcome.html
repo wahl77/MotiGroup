@@ -1,24 +1,43 @@
 <html>
 <body>
-	<H1>Hello to Motigroup, ${name}.</H1>
+	<H1>Hello to MotiGroup, ${name}.</H1>
 	<H2>Because sometimes you just want to say Thank you!</H2>
-	<TABLE border=1 >
+	<TABLE border=1 width="100%">
 		<tr>
 			<td>
-				<H3> Grade the somebody: </H3>
+				<H3> Grade somebody: </H3>
 				<FORM name="grade" method = "POST" action="grade.html">
-				% for i in range(0, len(people)):
-				<input type="radio" name="person" value="${people[i]['username']}">
-				${people[i]['username']} - ${people[i]['firstName']} ${people[i]['lastName']}<br>
-				% endfor
-
-				Grade: 
-				<select>
-					% for i in range(5, 101, 5):
-					<option value="${i}">${i}</option>
+				<table width="100%">
+					<tr>
+						<td><u>Username</u></td>
+						<td><u>First Name</u></td>
+						<td><u>Last Name</u></td>
+					</tr>
+					% for i in range(0, len(people)):
+					<tr>
+						<td>
+							% if name != people[i]['username']: 
+							<input type="radio" name="person" value="${people[i]['username']}">${people[i]['username']} </td>
+						<td>${people[i]['firstName']} </td>
+						<td>${people[i]['lastName']}</td>
+							% endif
+					</tr>
 					% endfor
-				</select>
+					<tr>
+						<td>
+						Grade: 
+							<select name="grade">
+							% for i in range(5, 101, 5):
+							<option value="${i}">${i}</option>
+							% endfor
+							</select>
+							<input type="submit" value="Go"/>
+						</td>
+						<td></td>
+						<td></td>
+			</table>
 				</FORM>
+				
 			</td>
 			<td>
 				<H3>Previously awarded grade</H3>
@@ -38,18 +57,5 @@
 			</td>
 		</tr>
 	</TABLE>
-
-<form method="POST" action="/administer_company.html">
-	<input type="submit" value="Administer Company"/>
-</form>
-
-<form method="POST" action="/grades.html">
-<input type="submit" value="grades"/>
-</form>
-
-<form method="POST" action="/users.html">
-<input type="submit" value="users"/>
-</form>
-
 </body>
 </html>

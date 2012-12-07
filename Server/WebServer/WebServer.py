@@ -78,21 +78,18 @@ class myHandler(BaseHTTPRequestHandler):
 			cookie = Cookie.SimpleCookie(self.headers.getheader("cookie"))
 			username = cookie["username"].value
 
-		if self.path == "/grades.html":
+		if self.path == "/grade.html":
 			self.send_response(200)
 			self.send_header('Content-type','text/html')
 			self.end_headers()
-			rows = self.get_prev_grades(username)
-			txt = Template(filename = 'grades.html').render(rows=rows)
-			self.wfile.write(txt)
-			return
-
-		if self.path == "/users.html":
-			self.send_response(200)
-			self.send_header('Content-type','text/html')
-			self.end_headers()
-			rows = self.get_user_list(username)
-			txt = Template(filename = 'users.html').render(rows=rows)
+			person = form["person"].value
+			grade = int(form["grade"].value)
+			print "From: To: Grade", username, person, grade
+			if self.validate_grade(username, person, grade) == True: 
+				html_txt = "You have successfully graded the following person"
+			else:
+				html_txt = "This would exceed your quota this month"
+			txt = Template(filename = 'grade.html').render(html_txt = html_txt, person = person, grade = grade)
 			self.wfile.write(txt)
 			return
 
@@ -120,6 +117,38 @@ class myHandler(BaseHTTPRequestHandler):
 		return rows
 		self.msg = "{0:25}{1:25}{2:25}\n".format('Username', 'Last Name', 'First Name')
 
+	# Make sure grade is valid and user is eligible to grade
+	# Username is the person inputing the data
+	# Person is the person receiving the grade
+	def validate_grade(self, username, person, grade):
+		query = "SELECT SUM(Grade) FROM Grades WHERE Timestamp > DATE_SUB(NOW(), INTERVAL DAYOFMONTH(NOW()) DAY) AND Grades.From = \'" + username + "\'"
+		cursor.execute(query)
+		rows = cursor.fetchall()
+		total = rows[0]['SUM(Grade)']
+
+		if total == None:
+			total = grade
+		else:
+			total += grade
+
+		if total > 100:
+			return False
+		else: 
+			try: 
+				query = "INSERT INTO Grades (`From`, `To`, `Timestamp`, `Grade`, `Comment`) VALUES ('" + username + "', '" + person + "', CURRENT_TIMESTAMP, '"+ str(grade) +"', '')"
+				cursor.execute(query)
+				db.commit()
+				self.msg = "Grade assigned properly.\nWelcome back to main menu"
+			except: 
+				print "Error processing query"
+				return False
+			return True
+
+	# Get a confirmation of a message
+	def get_confirmation(self, ):
+		yes = set(['Yes', 'yes', 'y', 'YES', 'Y'])
+		confirmation = self.send_recv()
+
 try:
 	#Create a web server and define the handler to manage the
 	#incoming request
@@ -132,5 +161,3 @@ try:
 except KeyboardInterrupt:
 	print '^C received, shutting down the web server'
 	server.socket.close()
-	
-
