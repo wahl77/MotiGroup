@@ -64,8 +64,12 @@ class myHandler(BaseHTTPRequestHandler):
 				self.send_header('Set-Cookie',cookie.output())
 
 			items = self.get_companies_list(username)
+			people = self.get_user_list(username)
+			grade = self.get_prev_grades(username)
+			total = 0
 			self.end_headers()
-			txt = Template(filename = 'welcome.html').render(name=username, items = items)
+			txt = Template(filename = 'welcome.html').render(name=username, items = items, people = people, grade = grade, total = total)
+			print total
 
 			self.wfile.write(txt)
 			return

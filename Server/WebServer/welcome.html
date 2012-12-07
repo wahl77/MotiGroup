@@ -1,20 +1,43 @@
 <html>
 <body>
-	<H1>Hello ${name} to MotiGroup,</H1>
+	<H1>Hello to Motigroup, ${name}.</H1>
 	<H2>Because sometimes you just want to say Thank you!</H2>
-	<TABLE>
-			<tr>
+	<TABLE border=1 >
+		<tr>
+			<td>
+				<H3> Grade the somebody: </H3>
+				<FORM name="grade" method = "POST" action="grade.html">
+				% for i in range(0, len(people)):
+				<input type="radio" name="person" value="${people[i]['username']}">
+				${people[i]['username']} - ${people[i]['firstName']} ${people[i]['lastName']}<br>
+				% endfor
 
-				<h2>You work for the followin companies</h2>
+				Grade: 
+				<select>
+					% for i in range(5, 101, 5):
+					<option value="${i}">${i}</option>
+					% endfor
+				</select>
+				</FORM>
+			</td>
+			<td>
+				<H3>Previously awarded grade</H3>
+				<% total = 0 %>
+				% for i in range(0, len(grade)):
+				<li>${grade[i]['To']} - ${grade[i]['Grade']}</li>
+				<% total += grade[i]['Grade'] %>
+				% endfor
+				<li>Total: ${total}</li>
+
+			</td>
+			<td>
+				<h3>You work for the followin companies</h3>
 				% for i in range(0,len(items)):
 				<li>${items[i]['company_name']}</li>
 				% endfor
-
-			</tr>
-
+			</td>
+		</tr>
 	</TABLE>
-</body>
-</html>
 
 <form method="POST" action="/administer_company.html">
 	<input type="submit" value="Administer Company"/>
